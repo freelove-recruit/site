@@ -35,9 +35,9 @@ export const botResponses: BotResponseSet[] = [
       "緊張してても大丈夫なように、優しく聞いてくれるから安心して☺️",
       "“うまく話せなかった…”って子でも採用されてるよ〜！"
     ]
-  }
-  // 以下すべてのテーマを収録済み
   },
+  // 以下すべてのテーマを収録済み
+  
   {
     title: "ゆるい雰囲気がいいな",
     responses: [
@@ -52,7 +52,7 @@ export const botResponses: BotResponseSet[] = [
       "疲れてる日もゆるっといられる場所って貴重だよね💭",
       "マイペースで働きたいって気持ち、大事にしてOKだよ！"
     ]
-  },
+    },
   {
     title: "掛け持ちでもいける？",
     responses: [
@@ -98,7 +98,7 @@ export const botResponses: BotResponseSet[] = [
       "最初は半信半疑な子多いけど、“ほんとだった”ってなるパターン☺️"
     ]
   },
-  },
+  
   {
     title: "身バレしない？",
     responses: [
