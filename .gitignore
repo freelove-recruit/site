@@ -1,0 +1,17 @@
+# Node
+node_modules/
+
+# Next.js build
+.next/
+
+# Env
+.env*
+# バックアップファイル
+*backup*.tsx
+*backup*.ts
+*backup*.txt
+*backup*.md
+
+# メモファイル
+20*.txt
+20*.md

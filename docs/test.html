@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AI相談Bot 3段落 テスト</title>
+  <style>
+    .bot-comment {
+      font-size: 20px;
+      background: #f6f6f6;
+      border-radius: 10px;
+      padding: 18px;
+      margin: 30px auto 0;
+      max-width: 500px;
+      min-height: 56px;
+      font-family: "Noto Sans JP", sans-serif;
+      box-shadow: 0 4px 24px 0 #eee;
+      letter-spacing: 0.07em;
+      white-space: pre-line;
+    }
+    .bot-typing {
+      color: #888;
+      font-size: 16px;
+      margin: 8px 0 0 12px;
+      font-style: italic;
+      font-family: "Noto Sans JP", sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat"></div>
+  <script>
+    function typeWriterEffect(text, targetEl, delay = 38, callback) {
+      let i = 0;
+      function typeNext() {
+        if (i < text.length) {
+          targetEl.textContent += text[i++];
+          setTimeout(typeNext, delay);
+        } else if (callback) {
+          callback();
+        }
+      }
+      typeNext();
+    }
+
+    // 3段落のAI風超長文
+    const blocks = [
+`週1だけのご希望、全く問題ありません。
+無理せず自分のペースで始められる方が多く、実際に週1でスタートされている方もたくさんいらっしゃいます。
+お仕事や学業、プライベートの予定などを大切にしながら働ける環境を整えていますので、安心してください。`,
+
+`これまでにも「最初は週1で様子を見たい」といった方がたくさん応募されており、その後、生活リズムに合わせて少しずつシフトを増やしていくケースもよくあります。
+逆に、しばらくは週1のペースを継続される方も多く、それぞれのご事情に合わせて柔軟に対応しています。
+面接や相談の際も、無理なご提案は一切ありませんのでご安心ください。`,
+
+`もし今後、「もう少し働けそう」「今月は予定が多いから控えめにしたい」など、状況が変わった場合も随時ご相談いただけます。
+あなたのペースや気持ちを最優先に、一緒に最適な働き方を考えていきますので、
+どうぞ気軽にお話しください。`
+    ];
+
+    const chat = document.getElementById('chat');
+
+    function showBlock(idx) {
+      if(idx >= blocks.length) return;
+      // 入力中...表示
+      const typing = document.createElement('div');
+      typing.className = 'bot-typing';
+      typing.textContent = '入力中...';
+      chat.appendChild(typing);
+
+      setTimeout(() => {
+        typing.remove();
+        // Bot吹き出し作成
+        const el = document.createElement('div');
+        el.className = 'bot-comment';
+        chat.appendChild(el);
+        typeWriterEffect(blocks[idx], el, 38, () => {
+          // 次の段落へ（1秒ディレイ）
+          setTimeout(() => showBlock(idx+1), 1000);
+        });
+      }, 1200); // 各段落ごとに"入力中..."を1.2秒
+    }
+
+    // 最初の段落からスタート
+    showBlock(0);
+  </script>
+</body>
+</html>
