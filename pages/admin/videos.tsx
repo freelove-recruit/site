@@ -139,37 +139,30 @@ export default function AdminVideos() {
     if (ids.length === 0) return;
     if (!window.confirm('選択した動画を全て削除しますか？')) return;
     
-    // 削除実行
+    // 1. 選択された動画のみを削除
     for (const id of ids) {
       await supabase.from('videos').delete().eq('id', Number(id));
     }
     
-    // 残った動画を取得してID振り直し
-    // select('*') で確実に全データを取得
+    // 2. 残った動画を取得（全カラム取得は維持）
     const { data: remainingVideos } = await supabase
       .from('videos')
       .select('*')
       .order('id', { ascending: true });
     
     if (remainingVideos && remainingVideos.length > 0) {
-      // 全削除してから新しいIDで再追加
-      for (const video of remainingVideos) {
-        await supabase.from('videos').delete().eq('id', video.id);
-      }
-      
+      // 3. IDを連番に更新（削除せず、UPDATEのみ行う）
       for (let i = 0; i < remainingVideos.length; i++) {
         const video = remainingVideos[i];
-        // 念のためログ出力（デバッグ用）
-        console.log('Re-inserting video:', video);
+        const newId = i + 1;
         
-        await supabase.from('videos').insert({
-          id: i + 1,
-          title: video.title || '',
-          embed_code: video.embed_code || '', // nullチェックを追加
-          url: video.url || '',               // nullチェックを追加
-          duration: video.duration || 15,     // デフォルト値15
-          sort_order: i + 1
-        });
+        // IDが変更になる場合のみ更新
+        if (video.id !== newId) {
+          await supabase.from('videos').update({
+            id: newId,
+            sort_order: newId
+          }).eq('id', video.id);
+        }
       }
     }
     
