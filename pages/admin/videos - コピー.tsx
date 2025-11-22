@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
-type Video = { id: number; title: string; embed_code: string; url?: string; duration?: number; sort_order?: number };
+type Video = { id: number; title: string; embed_code: string };
 
 // ドラッグ用の型追加
 type DraggedVideo = Video & { originalIndex: number };
@@ -64,8 +64,7 @@ export default function AdminVideos() {
 
   const fetchVideos = async () => {
     setLoading(true);
-    // select('*') で確実に全データを取得
-    const { data } = await supabase.from('videos').select('*').order('id', { ascending: true });
+    const { data } = await supabase.from('videos').select('id, title, embed_code').order('id', { ascending: true });
     setVideos(data || []);
     setLoading(false);
     setSelected({});
@@ -126,10 +125,10 @@ export default function AdminVideos() {
     }).filter(Boolean) as Video[];
     for (const up of updates) {
       await supabase.from('videos').update({
-        id: up.id,
-        title: up.title,
-        embed_code: up.embed_code,
-      }).eq('id', up.id);
+  id: up.id,
+  title: up.title,
+  embed_code: up.embed_code,
+}).eq('id', up.id);
     }
     fetchVideos();
   };
@@ -145,11 +144,7 @@ export default function AdminVideos() {
     }
     
     // 残った動画を取得してID振り直し
-    // select('*') で確実に全データを取得
-    const { data: remainingVideos } = await supabase
-      .from('videos')
-      .select('*')
-      .order('id', { ascending: true });
+    const { data: remainingVideos } = await supabase.from('videos').select('*').order('id', { ascending: true });
     
     if (remainingVideos && remainingVideos.length > 0) {
       // 全削除してから新しいIDで再追加
@@ -159,15 +154,11 @@ export default function AdminVideos() {
       
       for (let i = 0; i < remainingVideos.length; i++) {
         const video = remainingVideos[i];
-        // 念のためログ出力（デバッグ用）
-        console.log('Re-inserting video:', video);
-        
         await supabase.from('videos').insert({
           id: i + 1,
-          title: video.title || '',
-          embed_code: video.embed_code || '', // nullチェックを追加
-          url: video.url || '',               // nullチェックを追加
-          duration: video.duration || 15,     // デフォルト値15
+          title: video.title,
+          url: video.url,
+          duration: 15,
           sort_order: i + 1
         });
       }
@@ -198,17 +189,17 @@ export default function AdminVideos() {
   };
 
   const handleAdd = async () => {
-    if (!newRow.id || !newRow.title?.trim() || !newRow.embed_code?.trim()) return;
-    await supabase.from('videos').insert({
-      id: Number(newRow.id),
-      title: newRow.title.trim(),
-      embed_code: newRow.embed_code.trim(),
-      duration: 15,
-      sort_order: Number(newRow.id)
-    });
-    setNewRow({});
-    fetchVideos();
-  };
+  if (!newRow.id || !newRow.title?.trim() || !newRow.embed_code?.trim()) return;
+  await supabase.from('videos').insert({
+    id: Number(newRow.id),
+    title: newRow.title.trim(),
+    embed_code: newRow.embed_code.trim(),
+    duration: 15,
+    sort_order: Number(newRow.id)
+  });
+  setNewRow({});
+  fetchVideos();
+};
 
   // ドラッグ&ドロップ関数群
   const handleDragStart = (e: React.DragEvent, video: Video, index: number) => {
@@ -278,10 +269,7 @@ export default function AdminVideos() {
     newVideos.splice(finalDropIndex, 0, { 
       id: draggedVideo.id, 
       title: draggedVideo.title, 
-      embed_code: draggedVideo.embed_code,
-      url: draggedVideo.url,
-      duration: draggedVideo.duration,
-      sort_order: draggedVideo.sort_order
+      url: draggedVideo.url 
     });
     
     // 先に画面を更新
@@ -302,13 +290,12 @@ export default function AdminVideos() {
       for (let i = 0; i < newVideos.length; i++) {
         const video = newVideos[i];
         await supabase.from('videos').insert({
-          id: i + 1,
-          title: video.title,
-          embed_code: video.embed_code,
-          url: video.url,
-          duration: video.duration,
-          sort_order: i + 1
-        });
+  id: i + 1,
+  title: video.title,
+  embed_code: video.embed_code,
+  duration: 15,
+  sort_order: i + 1
+});
       }
       
       // 最後に画面を再取得
