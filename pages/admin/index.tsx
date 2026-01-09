@@ -3,9 +3,10 @@ import { useRouter } from 'next/router';
 import AdminEntries from './entries';
 import AdminVideos from './videos';
 import AdminRecruitImages from '../admin/recruit-images';
+import AdminRecruitInfo from '../admin/recruit-info';
 
 export default function AdminHome() {
-  const [tab, setTab] = useState<'top' | 'videos' | 'recruit'>('top');
+  const [tab, setTab] = useState<'top' | 'videos' | 'recruit' | 'info'>('top');
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -18,8 +19,8 @@ export default function AdminHome() {
       setLoading(false);
       // タブ復元
       const savedTab = localStorage.getItem('adminActiveTab');
-      if (savedTab && ['top', 'videos', 'recruit'].includes(savedTab)) {
-        setTab(savedTab as 'top' | 'videos' | 'recruit');
+      if (savedTab && ['top', 'videos', 'recruit', 'info'].includes(savedTab)) {
+        setTab(savedTab as 'top' | 'videos' | 'recruit' | 'info');
       }
     }
   }, []);
@@ -35,7 +36,7 @@ export default function AdminHome() {
 
 
 // タブ変更時に保存
-const handleTabChange = (newTab: 'top' | 'videos' | 'recruit') => {
+const handleTabChange = (newTab: 'top' | 'videos' | 'recruit' | 'info') => {
   setTab(newTab);
   localStorage.setItem('adminActiveTab', newTab);
 };
@@ -65,10 +66,11 @@ const handleTabChange = (newTab: 'top' | 'videos' | 'recruit') => {
           paddingRight: 32,
         }}
       >
-        <div style={{ display: 'flex', flex: 1 }}>
+        <div style={{ display: 'flex', flex: 1, overflowX: 'auto' }}>
           <button
             onClick={() => handleTabChange('top')}
             style={{
+              minWidth: 100,
               flex: 1,
               padding: 16,
               fontSize: 17,
@@ -78,6 +80,7 @@ const handleTabChange = (newTab: 'top' | 'videos' | 'recruit') => {
               borderBottom: tab === 'top' ? '3px solid #2563eb' : '3px solid transparent',
               color: tab === 'top' ? '#2563eb' : '#333',
               cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
             応募管理
@@ -85,6 +88,7 @@ const handleTabChange = (newTab: 'top' | 'videos' | 'recruit') => {
           <button
             onClick={() => handleTabChange('videos')}
             style={{
+              minWidth: 100,
               flex: 1,
               padding: 16,
               fontSize: 17,
@@ -94,6 +98,7 @@ const handleTabChange = (newTab: 'top' | 'videos' | 'recruit') => {
               borderBottom: tab === 'videos' ? '3px solid #2563eb' : '3px solid transparent',
               color: tab === 'videos' ? '#2563eb' : '#333',
               cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
             動画管理
@@ -101,6 +106,7 @@ const handleTabChange = (newTab: 'top' | 'videos' | 'recruit') => {
           <button
             onClick={() => handleTabChange('recruit')}
             style={{
+              minWidth: 100,
               flex: 1,
               padding: 16,
               fontSize: 17,
@@ -110,9 +116,28 @@ const handleTabChange = (newTab: 'top' | 'videos' | 'recruit') => {
               borderBottom: tab === 'recruit' ? '3px solid #2563eb' : '3px solid transparent',
               color: tab === 'recruit' ? '#2563eb' : '#333',
               cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
             画像管理
+          </button>
+          <button
+            onClick={() => handleTabChange('info')}
+            style={{
+              minWidth: 100,
+              flex: 1,
+              padding: 16,
+              fontSize: 17,
+              fontWeight: 700,
+              background: tab === 'info' ? '#eaf4ff' : '#fff',
+              border: 'none',
+              borderBottom: tab === 'info' ? '3px solid #2563eb' : '3px solid transparent',
+              color: tab === 'info' ? '#2563eb' : '#333',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            求人概要
           </button>
           
           
@@ -135,6 +160,7 @@ const handleTabChange = (newTab: 'top' | 'videos' | 'recruit') => {
         {tab === 'top' && <AdminEntries />}
         {tab === 'videos' && <AdminVideos />}
         {tab === 'recruit' && <AdminRecruitImages />}
+        {tab === 'info' && <AdminRecruitInfo />}
       </div>
     </div>
   );

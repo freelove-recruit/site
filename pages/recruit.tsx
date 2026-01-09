@@ -529,13 +529,24 @@ useEffect(() => {
           <h2>求人概要</h2>
           <table className="recruit-table">
             <tbody>
-              <tr><th>店 名</th><td>FreeLove</td></tr>
-              <tr><th>住所</th><td>兵庫県神戸市兵庫区福原町1-16</td></tr>
-              <tr><th>エリア</th><td>福原</td></tr>
-              <tr><th>業 種</th><td>ソープ</td></tr>
-              <tr><th>職 種</th><td>コンパニオン</td></tr>
-              <tr><th>勤務地</th><td>神戸・福原</td></tr>
-              <tr><th>勤務日</th><td>週1日からＯＫ</td></tr>
+              {(siteImages.filter(img => img.type === 'overview').length > 0) ? (
+                  siteImages.filter(img => img.type === 'overview').sort((a, b) => a.sort_order - b.sort_order).map(item => (
+                    <tr key={item.id}>
+                        <th>{item.name}</th>
+                        <td>{item.title}</td>
+                    </tr>
+                  ))
+              ) : (
+                <>
+                  <tr><th>店 名</th><td>FreeLove</td></tr>
+                  <tr><th>住所</th><td>兵庫県神戸市兵庫区福原町1-16</td></tr>
+                  <tr><th>エリア</th><td>福原</td></tr>
+                  <tr><th>業 種</th><td>ソープ</td></tr>
+                  <tr><th>職 種</th><td>コンパニオン</td></tr>
+                  <tr><th>勤務地</th><td>神戸・福原</td></tr>
+                  <tr><th>勤務日</th><td>週1日からＯＫ</td></tr>
+                </>
+              )}
             </tbody>
           </table>
         </section>
@@ -565,15 +576,49 @@ useEffect(() => {
 
         <div className="contact" id="contact">
           <h2>お問い合わせ</h2>
-          <a href={siteImages.find(img => img.name === 'line')?.link_url || "https://line.me/ti/p/XqLUYju4Cs"}>
-            <img src={siteImages.find(img => img.name === 'line')?.image_url || "https://blog-imgs-163.fc2.com/v/6/b/v6b34kfqwxjl/202506031537336f4.jpg"} alt="LINEで相談" />
-          </a>
-          <a href={siteImages.find(img => img.name === 'phone')?.link_url || "tel:0785776888"}>
-            <img src={siteImages.find(img => img.name === 'phone')?.image_url || "https://blog-imgs-163.fc2.com/v/6/b/v6b34kfqwxjl/20250603153731da3.jpg"} alt="電話をする" />
-          </a>
-          <a href={siteImages.find(img => img.name === 'mail')?.link_url || "mailto:recruit@freelove-kobe.com?subject=お問い合わせ&body=○○について教えてください。"}>
-            <img src={siteImages.find(img => img.name === 'mail')?.image_url || "https://blog-imgs-163.fc2.com/v/6/b/v6b34kfqwxjl/2025060315373420e.jpg"} alt="メールする" />
-          </a>
+          <div className="contact-buttons">
+            {siteImages.filter(img => img.type === 'contact').sort((a, b) => a.sort_order - b.sort_order).map(btn => (
+               <a key={btn.id} href={btn.link_url} style={{
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 width: '100%',
+                 maxWidth: '400px',
+                 margin: '0 auto 15px',
+                 padding: '15px',
+                 background: btn.image_url || '#333',
+                 color: '#fff',
+                 textDecoration: 'none',
+                 borderRadius: '8px',
+                 fontWeight: 'bold',
+                 fontSize: '1.1em',
+                 boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                 transition: 'opacity 0.2s',
+                 position: 'relative'
+               }}
+               onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+               >
+                 <span style={{ marginRight: '10px', fontSize: '1.2em' }}>▶</span>
+                 {btn.name}
+               </a>
+            ))}
+            
+            {/* バックワーズ互換性：まだ移行してない場合のために古い画像も表示 */}
+            {siteImages.filter(img => img.type === 'contact').length === 0 && (
+             <>
+               <a href={siteImages.find(img => img.name === 'line')?.link_url || "https://line.me/ti/p/XqLUYju4Cs"}>
+                 <img src={siteImages.find(img => img.name === 'line')?.image_url || "https://blog-imgs-163.fc2.com/v/6/b/v6b34kfqwxjl/202506031537336f4.jpg"} alt="LINEで相談" />
+               </a>
+               <a href={siteImages.find(img => img.name === 'phone')?.link_url || "tel:0785776888"}>
+                 <img src={siteImages.find(img => img.name === 'phone')?.image_url || "https://blog-imgs-163.fc2.com/v/6/b/v6b34kfqwxjl/20250603153731da3.jpg"} alt="電話をする" />
+               </a>
+               <a href={siteImages.find(img => img.name === 'mail')?.link_url || "mailto:recruit@freelove-kobe.com?subject=お問い合わせ&body=○○について教えてください。"}>
+                 <img src={siteImages.find(img => img.name === 'mail')?.image_url || "https://blog-imgs-163.fc2.com/v/6/b/v6b34kfqwxjl/2025060315373420e.jpg"} alt="メールする" />
+               </a>
+             </>
+            )}
+          </div>
         </div>
       </div>
 

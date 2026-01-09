@@ -25,10 +25,41 @@ export default function AdminRecruitImages() {
     
     const { data: fixedImages } = await supabase.from('site_images').select('*').eq('type', 'fixed').order('sort_order', { ascending: true });
     const { data: blogImages } = await supabase.from('site_images').select('*').eq('type', 'blog').order('sort_order', { ascending: true });
+    const { data: contactImages } = await supabase.from('site_images').select('*').eq('type', 'contact').order('sort_order', { ascending: true });
     
-    const allImages = [...(fixedImages || []), ...(blogImages || [])];
+    // マイグレーション：もしcontactImagesが空で、fixedImagesにline/phone/mailがある場合、それをcontactとして扱う（保存時にtypeが変わるようにする）
+    let initialImages = [...(fixedImages || []), ...(blogImages || []), ...(contactImages || [])];
     
-    setImages(allImages);
+    // 暫定的な自動移行ロジック（画面上のみ。保存するとDBも更新される）
+    if ((!contactImages || contactImages.length === 0) && fixedImages) {
+       const newContacts: SiteImage[] = [];
+       const fixedToConvert = fixedImages.filter(img => ['line', 'phone', 'mail'].includes(img.name));
+       
+       if (fixedToConvert.length > 0) {
+           // 既存のFixedを除外（画面上から消す）
+           initialImages = initialImages.filter(img => !['line', 'phone', 'mail'].includes(img.name));
+           
+           fixedToConvert.forEach(img => {
+               let color = '#333333';
+               let label = '相談する';
+               
+               if (img.name === 'line') { color = '#06C755'; label = 'LINEで相談する'; }
+               if (img.name === 'phone') { color = '#0ABAB5'; label = '電話で相談する'; }
+               if (img.name === 'mail') { color = '#333333'; label = 'メールで相談する'; }
+
+               newContacts.push({
+                   ...img,
+                   type: 'contact', // ここでタイプ変更
+                   old_id: img.id, // IDを引き継ぐために保持（保存時にUPDATEになるように）
+                   name: label,
+                   image_url: color, // 画像URLの代わりに色コードを入れる
+               } as any);
+           });
+           initialImages = [...initialImages, ...newContacts];
+       }
+    }
+
+    setImages(initialImages);
     setLoading(false);
   };
 
@@ -38,6 +69,16 @@ export default function AdminRecruitImages() {
   if (field === 'title' && currentImg?.type !== 'blog') return;
   
   setEdit(e => ({ ...e, [id]: { ...e[id], [field]: value } }));
+};
+
+const initContactButtons = () => {
+    // 既存のfixedタイプ（line, phone, mail）をcontactタイプに「移行」する処理（初回のみ実行を想定、あるいはボタンで実行）
+    // 今回は「まだcontactがない場合」に自動生成するロジックをfetchImagesに追加するのがベターだが、
+    // ユーザーは「まず移行された状態が見たい」はずなので、fetch時に変換ロジックを入れるか、
+    // UI上で「連絡ボタンを初期化・復元」ボタンを作る。
+    // ここではシンプルに、すでにデータがある前提で動くコードにするが、
+    // まだDBには old data しかないため、fetchImagesでマッピングするか、
+    // 初回に「移行実行」ボタンを押してもらう。
 };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, id?: string) => {
@@ -92,36 +133,47 @@ export default function AdminRecruitImages() {
     }
   };
 
-  const handleMoveUp = (id: string) => {
-    const blogImages = images.filter(img => img.type === 'blog').sort((a, b) => a.sort_order - b.sort_order);
-    const currentIndex = blogImages.findIndex(img => img.id === id);
+  const handleMoveUp = (id: string, type: 'blog' | 'contact') => {
+    // 現在のリストを並び順で取得
+    const targetImages = images.filter(img => img.type === type).sort((a, b) => a.sort_order - b.sort_order);
+    const currentIndex = targetImages.findIndex(img => img.id === id);
     
     if (currentIndex <= 0) return;
     
-    const currentItem = blogImages[currentIndex];
-    const aboveItem = blogImages[currentIndex - 1];
+    // 配列内で入れ替え
+    const newOrder = [...targetImages];
+    [newOrder[currentIndex - 1], newOrder[currentIndex]] = [newOrder[currentIndex], newOrder[currentIndex - 1]];
     
+    // 全体のsort_orderを連番で再設定（重複排除のため）
     const updatedImages = images.map(img => {
-      if (img.id === currentItem.id) return { ...img, sort_order: aboveItem.sort_order };
-      if (img.id === aboveItem.id) return { ...img, sort_order: currentItem.sort_order };
+      if (img.type !== type) return img;
+      const newIndex = newOrder.findIndex(item => item.id === img.id);
+      if (newIndex !== -1) {
+        return { ...img, sort_order: newIndex + 1 };
+      }
       return img;
     });
     
     setImages(updatedImages);
   };
 
-  const handleMoveDown = (id: string) => {
-    const blogImages = images.filter(img => img.type === 'blog').sort((a, b) => a.sort_order - b.sort_order);
-    const currentIndex = blogImages.findIndex(img => img.id === id);
+  const handleMoveDown = (id: string, type: 'blog' | 'contact') => {
+    const targetImages = images.filter(img => img.type === type).sort((a, b) => a.sort_order - b.sort_order);
+    const currentIndex = targetImages.findIndex(img => img.id === id);
     
-    if (currentIndex >= blogImages.length - 1) return;
+    if (currentIndex === -1 || currentIndex >= targetImages.length - 1) return;
     
-    const currentItem = blogImages[currentIndex];
-    const belowItem = blogImages[currentIndex + 1];
+    // 配列内で入れ替え
+    const newOrder = [...targetImages];
+    [newOrder[currentIndex], newOrder[currentIndex + 1]] = [newOrder[currentIndex + 1], newOrder[currentIndex]];
     
+    // 全体のsort_orderを連番で再設定
     const updatedImages = images.map(img => {
-      if (img.id === currentItem.id) return { ...img, sort_order: belowItem.sort_order };
-      if (img.id === belowItem.id) return { ...img, sort_order: currentItem.sort_order };
+      if (img.type !== type) return img;
+      const newIndex = newOrder.findIndex(item => item.id === img.id);
+      if (newIndex !== -1) {
+        return { ...img, sort_order: newIndex + 1 };
+      }
       return img;
     });
     
@@ -161,58 +213,67 @@ export default function AdminRecruitImages() {
   };
 
   const handleSaveAll = async () => {
-  setLoading(true);
-  try {
-    // 既存データの更新
-    for (const [id, editData] of Object.entries(edit)) {
-      if (Object.keys(editData).length > 0 && !id.startsWith('temp-')) {
-        await supabase.from('site_images').update(editData).eq('id', id);
-      }
-    }
-
+    setLoading(true);
+    try {
       // 削除されたアイテムの処理
-    const { data: dbData } = await supabase.from('site_images').select('id');
-    const dbIds = dbData?.map(item => item.id) || [];
-    const currentIds = images.filter(img => !img.id.startsWith('temp-')).map(img => img.id);
-    const deletedIds = dbIds.filter(id => !currentIds.includes(id));
-    
-    if (deletedIds.length > 0) {
-      await supabase.from('site_images').delete().in('id', deletedIds);
+      // 削除されたアイテムの処理
+      // 注意: 'overview' タイプはここでは管理しないため、削除対象から除外する
+      const { data: dbData } = await supabase
+        .from('site_images')
+        .select('id')
+        .neq('type', 'overview'); // overview以外を取得
+      
+      const dbIds = dbData?.map(item => item.id) || [];
+      const currentIds = images.filter(img => !img.id.startsWith('temp-')).map(img => img.id);
+      
+      // DBにはあるが、現在のリストにはないものを削除対象とする
+      const deletedIds = dbIds.filter(id => !currentIds.includes(id));
+      
+      if (deletedIds.length > 0) {
+        await supabase.from('site_images').delete().in('id', deletedIds);
+      }
+  
+      // 新規アイテムの追加
+      const newItems = images.filter(img => img.id.startsWith('temp-'));
+      for (const item of newItems) {
+        await supabase.from('site_images').insert({
+          type: item.type,
+          name: item.name,
+          title: item.type === 'blog' ? (item.title || '') : '',
+          image_url: item.image_url,
+          link_url: item.link_url || '',
+          sort_order: item.sort_order
+        });
+      }
+  
+      // 既存データの更新（マイグレーション含む）
+      // editステート（ユーザーの編集）とimagesステート（マイグレーションや並び替え）をマージして保存
+      const existingItems = images.filter(img => !img.id.startsWith('temp-'));
+      for (const item of existingItems) {
+        const userEdit = edit[item.id] || {};
+        
+        await supabase.from('site_images').update({
+            type: userEdit.type || item.type,
+            name: userEdit.name || item.name,
+            image_url: userEdit.image_url || item.image_url,
+            link_url: userEdit.link_url || item.link_url,
+            title: item.type === 'blog' ? (userEdit.title || item.title) : null,
+            sort_order: item.sort_order
+        }).eq('id', item.id);
+      }
+      
+      // データを再取得して画面を更新
+      await fetchImages();
+      setEdit({});
+      alert('全ての変更を保存しました');
+      
+    } catch (error: any) {
+      console.error('保存エラー:', error);
+      alert('保存に失敗しました: ' + (error.message || '不明なエラー'));
+    } finally {
+      setLoading(false);
     }
-
-    // 新規アイテムの追加
-    const newItems = images.filter(img => img.id.startsWith('temp-'));
-    for (const item of newItems) {
-      await supabase.from('site_images').insert({
-        type: item.type,
-        name: item.name,
-        title: item.type === 'blog' ? (item.title || '') : '',
-        image_url: item.image_url,
-        link_url: item.link_url || '',
-        sort_order: item.sort_order
-      });
-    }
-
-      // 並び替えの更新
-    const existingItems = images.filter(img => !img.id.startsWith('temp-'));
-    for (const item of existingItems) {
-      await supabase.from('site_images').update({
-        sort_order: item.sort_order
-      }).eq('id', item.id);
-    }
-    
-    // データを再取得して画面を更新
-    await fetchImages();
-    setEdit({});
-    alert('全ての変更を保存しました');
-    
-  } catch (error) {
-    console.error('保存エラー:', error);
-    alert('保存に失敗しました: ' + error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <>
@@ -255,8 +316,8 @@ export default function AdminRecruitImages() {
             <div style={{ textAlign: 'center', padding: 50, fontSize: 18 }}>読込中…</div>
           ) : (
             images.filter(img => img.type === 'fixed' && (img.name === 'header' || img.name === 'main')).sort((a, b) => {
-              const order = { 'header': 1, 'main': 2 };
-              return order[a.name] - order[b.name];
+              const order: {[key: string]: number} = { 'header': 1, 'main': 2 };
+              return (order[a.name] || 99) - (order[b.name] || 99);
             }).map((img) => (
               <div key={img.id} style={{
                 background: '#f8fafd',
@@ -349,7 +410,7 @@ export default function AdminRecruitImages() {
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button
-                    onClick={() => handleMoveUp(img.id)}
+                    onClick={() => handleMoveUp(img.id, 'blog')}
                     disabled={index === 0}
                     style={{
                       background: index === 0 ? '#ccc' : '#666',
@@ -364,7 +425,7 @@ export default function AdminRecruitImages() {
                     ↑
                   </button>
                   <button
-                    onClick={() => handleMoveDown(img.id)}
+                    onClick={() => handleMoveDown(img.id, 'blog')}
                     disabled={index === blogArray.length - 1}
                     style={{
                       background: index === blogArray.length - 1 ? '#ccc' : '#666',
@@ -548,78 +609,161 @@ export default function AdminRecruitImages() {
 
         <div>
           <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700, color: '#333' }}>
-            お問い合わせボタン
+            お問い合わせボタン（画像不使用）
           </h3>
           
-          {images.filter(img => img.type === 'fixed' && (img.name === 'mail' || img.name === 'line' || img.name === 'phone')).sort((a, b) => {
-            const order = { 'line': 1, 'mail': 2, 'phone': 3 };
-            return order[a.name] - order[b.name];
-          }).map((img) => (
-            <div key={img.id} style={{
+          {images.filter(img => img.type === 'contact').sort((a, b) => a.sort_order - b.sort_order).map((img, index, contactArray) => (
+             <div key={img.id} style={{
               background: '#f8fafd',
               border: '1px solid #e0e4ec',
               borderRadius: 8,
               padding: 16,
               marginBottom: 12
             }}>
-              
-              <div style={{ marginBottom: 8, fontSize: 12, color: '#666' }}>
-                {getSizeText(img.name)}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: '#666' }}>
+                  ボタン {index + 1}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    onClick={() => handleMoveUp(img.id, 'contact')}
+                    disabled={index === 0}
+                    style={{
+                      background: index === 0 ? '#ccc' : '#666',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 3,
+                      padding: '4px 8px',
+                      fontSize: 12,
+                      cursor: index === 0 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => handleMoveDown(img.id, 'contact')}
+                    disabled={index === contactArray.length - 1}
+                    style={{
+                      background: index === contactArray.length - 1 ? '#ccc' : '#666',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 3,
+                      padding: '4px 8px',
+                      fontSize: 12,
+                      cursor: index === contactArray.length - 1 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    ↓
+                  </button>
+                </div>
               </div>
 
-              {/* お問い合わせボタンのタイトル欄は削除 */}
+              <label style={{display:'block', fontSize:'12px', marginBottom:'4px', color:'#666'}}>ボタンの文字</label>
+              <input
+                value={edit[img.id]?.name !== undefined ? edit[img.id].name : img.name}
+                onChange={e => handleEditChange(img.id, 'name', e.target.value)}
+                placeholder="例：LINEで相談する"
+                className="input-field"
+              />
 
-              {(edit[img.id]?.image_url || img.image_url) && (
-                <img 
-                  src={edit[img.id]?.image_url || img.image_url} 
-                  alt="プレビュー"
-                  style={{ 
-                    maxWidth: 200, 
-                    maxHeight: 100, 
-                    objectFit: 'contain',
-                    marginBottom: 12,
-                    border: '1px solid #ddd',
-                    borderRadius: 4
-                  }}
-                />
-              )}
-
-              <div style={{ marginBottom: 12 }}>
+              <label style={{display:'block', fontSize:'12px', marginBottom:'4px', color:'#666'}}>ボタンの色（クリックして選択）</label>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 10 }}>
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={e => handleImageUpload(e, img.id)}
-                  style={{ display: 'none' }}
-                  id={`file-contact-${img.id}`}
-                />
-                <label
-                  htmlFor={`file-contact-${img.id}`}
+                  type="color"
+                  value={edit[img.id]?.image_url || img.image_url || '#000000'}
+                  onChange={e => handleEditChange(img.id, 'image_url', e.target.value)}
                   style={{
-                    display: 'inline-block',
-                    padding: '6px 12px',
-                    background: '#f5f5f5',
-                    color: '#333',
+                    width: '50px',
+                    height: '40px',
+                    padding: 0,
                     border: '1px solid #ccc',
                     borderRadius: 4,
-                    cursor: uploading[img.id] ? 'not-allowed' : 'pointer',
-                    fontSize: 14
+                    cursor: 'pointer'
                   }}
-                >
-                  ファイルを選択
-                </label>
-                <span style={{ marginLeft: 8, color: '#666', fontSize: 14 }}>
-                  {uploading[img.id] ? 'アップロード中...' : '選択されていません'}
-                </span>
+                />
+                <div style={{
+                  flex: 1,
+                  background: edit[img.id]?.image_url || img.image_url || '#000000',
+                  color: '#fff',
+                  padding: '10px',
+                  borderRadius: 4,
+                  textAlign: 'center',
+                  fontWeight: 'bold',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}>
+                  {edit[img.id]?.name !== undefined ? edit[img.id].name : img.name} <span style={{fontSize:'0.8em'}}>▶</span>
+                </div>
               </div>
 
+              <label style={{display:'block', fontSize:'12px', marginBottom:'4px', color:'#666'}}>リンクURL（tel:やmailto:も可）</label>
               <input
                 value={edit[img.id]?.link_url !== undefined ? edit[img.id].link_url : (img.link_url === '#' ? '' : img.link_url)}
                 onChange={e => handleEditChange(img.id, 'link_url', e.target.value)}
                 placeholder="リンクURL"
                 className="input-field"
               />
+              
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => handleDelete(img.id)}
+                  style={{
+                    background: '#984545',
+                    color: '#fff',
+                    padding: '6px 12px',
+                    border: 'none',
+                    borderRadius: 5,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: 'pointer'
+                  }}
+                >
+                  削除
+                </button>
+              </div>
+
             </div>
           ))}
+
+          <div style={{
+            background: '#fff8f0',
+            border: '2px dashed #orange',
+            borderRadius: 8,
+            padding: 16,
+            marginTop: 16,
+            border: '2px dashed #ff9800'
+          }}>
+             <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 600, color: '#e65100' }}>
+               新しいお問い合わせボタンを作成
+             </div>
+             
+             <button
+                onClick={() => {
+                   const contactImages = images.filter(img => img.type === 'contact');
+                   const maxSortOrder = contactImages.length > 0 ? Math.max(...contactImages.map(img => img.sort_order)) : 0;
+                   const newContact = {
+                      id: `temp-contact-${Date.now()}`,
+                      type: 'contact',
+                      name: '新しいボタン',
+                      image_url: '#333333', // Default color
+                      link_url: '',
+                      sort_order: maxSortOrder + 1
+                   };
+                   setImages([...images, newContact]);
+                }}
+                style={{
+                  background: '#ff9800',
+                  color: '#fff',
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: 5,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: 'pointer'
+                }}
+              >
+                ＋ 空のボタンを追加
+              </button>
+          </div>
         </div>
       </div>
 
