@@ -792,19 +792,43 @@ function finalStep() {
       type(() => {
         bot("まずは“ちょっと聞いてみる”感じで電話してみても大丈夫だよ📞 無理に話さなくてもOKだから、気軽にね☺️");
         const box = wrap();
-        const tel = document.createElement("button");
-        tel.className = "option-btn";
-        tel.textContent = "電話で確認する";
-        tel.onclick = async () => {
+
+        // フリーダイヤルボタン
+        const freeDialBtn = document.createElement("button");
+        freeDialBtn.className = "option-btn";
+        freeDialBtn.innerHTML = `
+          <strong style="font-size: 1.1em;">📞 フリーダイヤルでかける(無料)</strong><br>
+          <span style="font-size: 0.85em; display: block; margin-top: 4px;">0120-298-071</span>
+        `;
+        freeDialBtn.onclick = async () => {
           try {
             await supabase.from('chat_applications').insert({
-              contact_method: '電話'
+              contact_method: '電話(フリーダイヤル)'
             });
           } catch (error) {
             console.error('電話データ保存エラー:', error);
           }
-          window.location.href = "tel:0785776888";
+          window.location.href = "tel:0120298071";
         };
+
+        // 店舗・担当者ボタン
+        const shopTelBtn = document.createElement("button");
+        shopTelBtn.className = "option-btn";
+        shopTelBtn.innerHTML = `
+          <strong style="font-size: 1.1em;">📞 店舗電話番号</strong><br>
+          <span style="font-size: 0.85em; display: block; margin-top: 4px;">078-577-8848</span>
+        `;
+        shopTelBtn.onclick = async () => {
+           try {
+            await supabase.from('chat_applications').insert({
+              contact_method: '電話(店舗)'
+            });
+          } catch (error) {
+            console.error('電話データ保存エラー:', error);
+          }
+          window.location.href = "tel:0785778848";
+        };
+
         const skip = document.createElement("button");
         skip.className = "option-btn";
         skip.textContent = "電話は緊張する…LINE／メールで進めたい";
@@ -817,7 +841,9 @@ function finalStep() {
             nameStep();
           }, 2000);
         };
-        box.appendChild(tel);
+
+        box.appendChild(freeDialBtn);
+        box.appendChild(shopTelBtn);
         box.appendChild(skip);
         scroll();
       }, 2000);
